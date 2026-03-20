@@ -55,6 +55,7 @@ function migrate(db: Database): void {
     CREATE TABLE IF NOT EXISTS posts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       source_id INTEGER NOT NULL,
+      external_id TEXT,
       title TEXT NOT NULL,
       url TEXT NOT NULL,
       author TEXT,
@@ -65,6 +66,16 @@ function migrate(db: Database): void {
       UNIQUE(source_id, url)
     )
   `);
+
+  // Add external_id column if missing (migration for existing DBs)
+  try {
+    db.exec("SELECT external_id FROM posts LIMIT 0");
+  } catch {
+    db.run("ALTER TABLE posts ADD COLUMN external_id TEXT");
+  }
+
+  // Index for fast external_id lookups
+  db.run("CREATE INDEX IF NOT EXISTS idx_posts_external_id ON posts(source_id, external_id)");
 
   db.run(`
     CREATE TABLE IF NOT EXISTS notifications (
@@ -84,6 +95,20 @@ function migrate(db: Database): void {
       channel TEXT NOT NULL UNIQUE CHECK(channel IN ('imessage', 'email', 'slack')),
       config TEXT NOT NULL DEFAULT '{}',
       enabled INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS crawl_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      source_id INTEGER NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('success', 'error')),
+      total_found INTEGER NOT NULL DEFAULT 0,
+      new_posts INTEGER NOT NULL DEFAULT 0,
+      matched_posts INTEGER NOT NULL DEFAULT 0,
+      error_message TEXT,
+      crawled_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE CASCADE
     )
   `);
 

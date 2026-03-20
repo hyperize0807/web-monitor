@@ -19,6 +19,7 @@ export async function crawlRss(feedUrl: string): Promise<CrawledPost[]> {
       title: item.title.trim(),
       url: item.link,
       author: item.creator || item.author,
+      externalId: item.guid || item.id || undefined,
     });
   }
 

@@ -7,7 +7,7 @@ const router = Router();
 router.get("/", async (req, res) => {
   try {
     const db = await getDb();
-    const { source_id, keyword, page = "1", limit = "50" } = req.query;
+    const { source_id, keyword, matched_only, page = "1", limit = "50" } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
 
     let where = "1=1";
@@ -21,6 +21,10 @@ router.get("/", async (req, res) => {
     if (keyword) {
       where += " AND (p.title LIKE ? OR p.content LIKE ?)";
       params.push(`%${keyword}%`, `%${keyword}%`);
+    }
+
+    if (matched_only === "true") {
+      where += " AND EXISTS (SELECT 1 FROM notifications n WHERE n.post_id = p.id)";
     }
 
     const countResult = db.exec(

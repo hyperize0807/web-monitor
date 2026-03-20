@@ -61,7 +61,21 @@ export interface AnalyzeResult {
   link: string;
   linkAttr?: string;
   author?: string;
-  preview: Array<{ title: string; url: string; author?: string }>;
+  postId?: string;
+  postIdAttr?: string;
+  preview: Array<{ title: string; url: string; author?: string; postId?: string }>;
+}
+
+export interface CrawlLog {
+  id: number;
+  source_id: number;
+  source_name: string;
+  status: "success" | "error";
+  total_found: number;
+  new_posts: number;
+  matched_posts: number;
+  error_message: string | null;
+  crawled_at: string;
 }
 
 export const api = {
@@ -91,10 +105,11 @@ export const api = {
   triggerCrawl: (id: number) =>
     request<void>(`/sources/${id}/crawl`, { method: "POST" }),
 
-  getPosts: (params?: { source_id?: number; keyword?: string; page?: number }) => {
+  getPosts: (params?: { source_id?: number; keyword?: string; matched_only?: boolean; page?: number }) => {
     const q = new URLSearchParams();
     if (params?.source_id) q.set("source_id", String(params.source_id));
     if (params?.keyword) q.set("keyword", params.keyword);
+    if (params?.matched_only) q.set("matched_only", "true");
     if (params?.page) q.set("page", String(params.page));
     return request<{ posts: Post[]; total: number; page: number; limit: number }>(
       `/posts?${q}`
@@ -114,4 +129,13 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
+
+  getCrawlLogs: (params?: { source_id?: number; page?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.source_id) q.set("source_id", String(params.source_id));
+    if (params?.page) q.set("page", String(params.page));
+    return request<{ logs: CrawlLog[]; total: number; page: number; limit: number }>(
+      `/crawl-logs?${q}`
+    );
+  },
 };

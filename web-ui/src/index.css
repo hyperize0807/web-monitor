@@ -395,6 +395,72 @@ tbody tr:hover {
   font-size: 12px;
 }
 
+/* Post cards */
+.post-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.post-card .card-body {
+  padding: 16px 20px;
+}
+
+.post-card-header {
+  margin-bottom: 8px;
+}
+
+.post-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.post-author {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.post-date {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.post-card-title {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.post-card-title:hover {
+  color: var(--primary);
+}
+
+.post-card-summary {
+  background: #f9fafb;
+  border-radius: 6px;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.post-card-summary p {
+  margin: 0;
+}
+
+.post-card-summary p + p {
+  margin-top: 6px;
+}
+
+.post-card-summary p:empty {
+  display: none;
+}
+
 /* Empty state */
 .empty-state {
   text-align: center;

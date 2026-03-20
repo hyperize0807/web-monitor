@@ -5,6 +5,7 @@ export interface CrawledPost {
   title: string;
   url: string;
   author?: string;
+  externalId?: string;
 }
 
 export interface Selectors {
@@ -13,6 +14,8 @@ export interface Selectors {
   link: string; // 링크 셀렉터 (예: .title a)
   linkAttr?: string; // 링크 속성 (기본: href)
   author?: string; // 작성자 셀렉터
+  postId?: string; // 게시글 고유 ID 셀렉터 (예: td.no)
+  postIdAttr?: string; // ID를 가져올 속성 (없으면 텍스트 사용)
 }
 
 export async function crawlHtml(
@@ -43,6 +46,14 @@ export async function crawlHtml(
     const url = new URL(rawHref, pageUrl).href;
 
     const post: CrawledPost = { title, url };
+
+    if (selectors.postId) {
+      const idEl = $(el).find(selectors.postId);
+      const externalId = selectors.postIdAttr
+        ? idEl.attr(selectors.postIdAttr)?.trim()
+        : idEl.text().trim();
+      if (externalId) post.externalId = externalId;
+    }
 
     if (selectors.author) {
       const author = $(el).find(selectors.author).text().trim();

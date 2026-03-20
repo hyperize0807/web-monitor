@@ -14,6 +14,8 @@ interface SourceForm {
     link: string;
     linkAttr: string;
     author: string;
+    postId: string;
+    postIdAttr: string;
   };
 }
 
@@ -23,7 +25,7 @@ const emptyForm: SourceForm = {
   type: "html",
   interval_minutes: 5,
   keywords: "",
-  selectors: { row: "", title: "", link: "", linkAttr: "href", author: "" },
+  selectors: { row: "", title: "", link: "", linkAttr: "href", author: "", postId: "", postIdAttr: "" },
 };
 
 export default function SourcesPage() {
@@ -73,6 +75,8 @@ export default function SourcesPage() {
         link: s.selectors.link || "",
         linkAttr: s.selectors.linkAttr || "href",
         author: s.selectors.author || "",
+        postId: s.selectors.postId || "",
+        postIdAttr: s.selectors.postIdAttr || "",
       },
     });
     setPreview(null);
@@ -97,6 +101,8 @@ export default function SourcesPage() {
           link: result.link,
           linkAttr: result.linkAttr || "href",
           author: result.author || "",
+          postId: result.postId || "",
+          postIdAttr: result.postIdAttr || "",
         },
       }));
       setPreview(result.preview);
@@ -441,6 +447,36 @@ export default function SourcesPage() {
                       />
                     </div>
                   </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>게시글 ID (postId)</label>
+                      <input
+                        value={form.selectors.postId}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            selectors: { ...f.selectors, postId: e.target.value },
+                          }))
+                        }
+                        placeholder="예: td.no (선택사항)"
+                      />
+                      <div className="form-hint">게시글 고유번호 셀렉터. 중복 알림 방지에 사용됩니다.</div>
+                    </div>
+                    <div className="form-group">
+                      <label>게시글 ID 속성 (postIdAttr)</label>
+                      <input
+                        value={form.selectors.postIdAttr}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            selectors: { ...f.selectors, postIdAttr: e.target.value },
+                          }))
+                        }
+                        placeholder="예: data-id (비워두면 텍스트 사용)"
+                      />
+                      <div className="form-hint">속성에서 ID를 가져올 경우 지정. 보통 비워둡니다.</div>
+                    </div>
+                  </div>
                 </>
               )}
 
@@ -452,6 +488,7 @@ export default function SourcesPage() {
                   <div className="preview-list">
                     {preview.map((p, i) => (
                       <div key={i} className="preview-item">
+                        {p.postId && <span className="badge badge-info" style={{ marginRight: 6 }}>#{p.postId}</span>}
                         <a href={p.url} target="_blank" rel="noreferrer">
                           {p.title}
                         </a>

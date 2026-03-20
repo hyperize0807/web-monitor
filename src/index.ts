@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { getDb } from "./db/index.js";
 import { createServer } from "./web/server.js";
 import { startScheduler } from "./scheduler/index.js";

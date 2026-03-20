@@ -11,6 +11,7 @@ export default function PostsPage() {
   const [loading, setLoading] = useState(true);
   const [filterSource, setFilterSource] = useState<number | undefined>();
   const [filterKeyword, setFilterKeyword] = useState("");
+  const [matchedOnly, setMatchedOnly] = useState(true);
 
   const load = async () => {
     setLoading(true);
@@ -18,6 +19,7 @@ export default function PostsPage() {
       const data = await api.getPosts({
         source_id: filterSource,
         keyword: filterKeyword || undefined,
+        matched_only: matchedOnly,
         page,
       });
       setPosts(data.posts);
@@ -41,7 +43,7 @@ export default function PostsPage() {
 
   useEffect(() => {
     load();
-  }, [page, filterSource]);
+  }, [page, filterSource, matchedOnly]);
 
   const handleSearch = () => {
     setPage(1);
@@ -53,6 +55,7 @@ export default function PostsPage() {
   const formatDate = (d: string) => {
     const date = new Date(d + "Z");
     return date.toLocaleString("ko-KR", {
+      year: "numeric",
       month: "short",
       day: "numeric",
       hour: "2-digit",
@@ -70,8 +73,8 @@ export default function PostsPage() {
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-body" style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
-          <div className="form-group" style={{ marginBottom: 0, flex: 1 }}>
+        <div className="card-body" style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
+          <div className="form-group" style={{ marginBottom: 0, minWidth: 140 }}>
             <label>소스 필터</label>
             <select
               value={filterSource ?? ""}
@@ -88,7 +91,7 @@ export default function PostsPage() {
               ))}
             </select>
           </div>
-          <div className="form-group" style={{ marginBottom: 0, flex: 2 }}>
+          <div className="form-group" style={{ marginBottom: 0, flex: 1, minWidth: 200 }}>
             <label>검색</label>
             <div style={{ display: "flex", gap: 8 }}>
               <input
@@ -102,95 +105,96 @@ export default function PostsPage() {
               </button>
             </div>
           </div>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              cursor: "pointer",
+              userSelect: "none",
+              paddingBottom: 2,
+              whiteSpace: "nowrap",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={matchedOnly}
+              onChange={() => {
+                setMatchedOnly((v) => !v);
+                setPage(1);
+              }}
+              style={{ width: 16, height: 16 }}
+            />
+            <span style={{ fontSize: 13, fontWeight: 500 }}>키워드 매칭만</span>
+          </label>
         </div>
       </div>
 
-      <div className="card">
-        {loading ? (
-          <div className="empty-state">
-            <div className="spinner" />
-          </div>
-        ) : posts.length === 0 ? (
-          <div className="empty-state">
-            <h3>감지된 게시물이 없습니다</h3>
-            <p>모니터링 소스를 등록하면 새 게시물이 여기에 표시됩니다.</p>
-          </div>
-        ) : (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>소스</th>
-                  <th>제목</th>
-                  <th>작성자</th>
-                  <th>요약</th>
-                  <th>감지 시각</th>
-                </tr>
-              </thead>
-              <tbody>
-                {posts.map((p) => (
-                  <tr key={p.id}>
-                    <td>
-                      <span className="badge badge-muted">{p.source_name}</span>
-                    </td>
-                    <td>
-                      <a
-                        href={p.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{ fontWeight: 500 }}
-                      >
-                        {p.title}
-                      </a>
-                    </td>
-                    <td style={{ color: "var(--text-secondary)", fontSize: 13 }}>
-                      {p.author || "-"}
-                    </td>
-                    <td
-                      style={{
-                        fontSize: 13,
-                        color: "var(--text-secondary)",
-                        maxWidth: 280,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                      title={p.summary || undefined}
-                    >
-                      {p.summary || "-"}
-                    </td>
-                    <td style={{ whiteSpace: "nowrap", fontSize: 13, color: "var(--text-secondary)" }}>
-                      {formatDate(p.detected_at)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+      {loading ? (
+        <div className="empty-state">
+          <div className="spinner" />
+        </div>
+      ) : posts.length === 0 ? (
+        <div className="empty-state">
+          <h3>감지된 게시물이 없습니다</h3>
+          <p>모니터링 소스를 등록하면 새 게시물이 여기에 표시됩니다.</p>
+        </div>
+      ) : (
+        <div className="post-list">
+          {posts.map((p) => (
+            <div key={p.id} className="card post-card">
+              <div className="card-body">
+                <div className="post-card-header">
+                  <div className="post-card-meta">
+                    <span className="badge badge-muted">{p.source_name}</span>
+                    {p.author && (
+                      <span className="post-author">{p.author}</span>
+                    )}
+                    <span className="post-date">{formatDate(p.detected_at)}</span>
+                  </div>
+                </div>
+                <a
+                  href={p.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="post-card-title"
+                >
+                  {p.title}
+                </a>
+                {p.summary && (
+                  <div className="post-card-summary">
+                    {p.summary.split("\n").map((line, i) => (
+                      <p key={i}>{line}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
-        {totalPages > 1 && (
-          <div className="pagination">
-            <button
-              className="btn btn-sm"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              이전
-            </button>
-            <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-              {page} / {totalPages}
-            </span>
-            <button
-              className="btn btn-sm"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              다음
-            </button>
-          </div>
-        )}
-      </div>
+      {totalPages > 1 && (
+        <div className="pagination">
+          <button
+            className="btn btn-sm"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => p - 1)}
+          >
+            이전
+          </button>
+          <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+            {page} / {totalPages}
+          </span>
+          <button
+            className="btn btn-sm"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            다음
+          </button>
+        </div>
+      )}
     </>
   );
 }

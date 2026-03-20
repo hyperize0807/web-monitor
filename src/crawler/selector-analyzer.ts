@@ -10,7 +10,9 @@ export interface AnalyzedSelectors {
   link: string;
   linkAttr?: string;
   author?: string;
-  preview: Array<{ title: string; url: string; author?: string }>;
+  postId?: string;
+  postIdAttr?: string;
+  preview: Array<{ title: string; url: string; author?: string; postId?: string }>;
 }
 
 export async function analyzeSelectors(
@@ -49,9 +51,11 @@ Return a JSON object with these fields:
 - link: CSS selector for the link element (relative to row)
 - linkAttr: attribute name for the URL (usually "href")
 - author: CSS selector for the author (relative to row), or null if not found
+- postId: CSS selector for the unique post ID/number (relative to row), e.g. a numbered column like "번호" or "No.", or null if not found
+- postIdAttr: if the post ID is in an attribute (e.g. data-id), specify it here; otherwise null (text content will be used)
 
 Return ONLY valid JSON, no explanation.
-Example: {"row": "table.board-list tbody tr", "title": "td.title a", "link": "td.title a", "linkAttr": "href", "author": "td.author"}`,
+Example: {"row": "table.board-list tbody tr", "title": "td.title a", "link": "td.title a", "linkAttr": "href", "author": "td.author", "postId": "td.no", "postIdAttr": null}`,
       },
     ],
   });
@@ -66,7 +70,7 @@ Example: {"row": "table.board-list tbody tr", "title": "td.title a", "link": "td
   const selectors = JSON.parse(jsonMatch[0]);
 
   // Validate by actually trying the selectors
-  const preview: Array<{ title: string; url: string; author?: string }> = [];
+  const preview: Array<{ title: string; url: string; author?: string; postId?: string }> = [];
   $(selectors.row).each((i, el) => {
     if (i >= 5) return false; // limit preview to 5
     const titleText = $(el).find(selectors.title).text().trim();
@@ -75,13 +79,20 @@ Example: {"row": "table.board-list tbody tr", "title": "td.title a", "link": "td
       .attr(selectors.linkAttr || "href");
 
     if (titleText && linkHref) {
-      const item: { title: string; url: string; author?: string } = {
+      const item: { title: string; url: string; author?: string; postId?: string } = {
         title: titleText,
         url: new URL(linkHref, url).href,
       };
       if (selectors.author) {
         const author = $(el).find(selectors.author).text().trim();
         if (author) item.author = author;
+      }
+      if (selectors.postId) {
+        const idEl = $(el).find(selectors.postId);
+        const postId = selectors.postIdAttr
+          ? idEl.attr(selectors.postIdAttr)?.trim()
+          : idEl.text().trim();
+        if (postId) item.postId = postId;
       }
       preview.push(item);
     }
@@ -93,6 +104,8 @@ Example: {"row": "table.board-list tbody tr", "title": "td.title a", "link": "td
     link: selectors.link,
     linkAttr: selectors.linkAttr || "href",
     author: selectors.author || undefined,
+    postId: selectors.postId || undefined,
+    postIdAttr: selectors.postIdAttr || undefined,
     preview,
   };
 }

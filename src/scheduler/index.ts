@@ -25,6 +25,11 @@ export function scheduleSource(sourceId: number, intervalMinutes: number): void 
   // Stop existing task if any
   stopSource(sourceId);
 
+  // Run immediately on first schedule
+  crawlSource(sourceId).catch((err) =>
+    console.error(`[Scheduler] Error on initial crawl for source ${sourceId}:`, err.message)
+  );
+
   const cronExpr = `*/${intervalMinutes} * * * *`;
   const task = cron.schedule(cronExpr, () => {
     crawlSource(sourceId).catch((err) =>
@@ -75,22 +80,40 @@ async function crawlSource(sourceId: number): Promise<void> {
     } else {
       const selectors: Selectors = JSON.parse(selectorsJson || "{}");
       if (!selectors.row || !selectors.title || !selectors.link) {
-        console.warn(`[Crawler] Source ${name} has incomplete selectors, skipping`);
+        const errMsg = "Incomplete selectors, skipping";
+        console.warn(`[Crawler] Source ${name}: ${errMsg}`);
+        db.run(
+          "INSERT INTO crawl_logs (source_id, status, error_message) VALUES (?, 'error', ?)",
+          [id, errMsg]
+        );
+        saveDb();
         return;
       }
       posts = await crawlHtml(url, selectors);
     }
 
     let newCount = 0;
+    let matchedCount = 0;
 
     for (const post of posts) {
-      // Check if post already exists
-      const existing = db.exec(
-        "SELECT id FROM posts WHERE source_id = ? AND url = ?",
-        [id, post.url]
-      );
+      // Check if post already exists (by external_id first, then by url)
+      let existing;
+      if (post.externalId) {
+        existing = db.exec(
+          "SELECT id FROM posts WHERE source_id = ? AND external_id = ?",
+          [id, post.externalId]
+        );
+      }
+      if (!existing?.[0]?.values.length) {
+        existing = db.exec(
+          "SELECT id FROM posts WHERE source_id = ? AND url = ?",
+          [id, post.url]
+        );
+      }
 
       if (existing[0]?.values.length) continue;
+
+      newCount++;
 
       // Check keyword match (if keywords defined, at least one must match)
       if (keywords.length > 0) {
@@ -101,24 +124,25 @@ async function crawlSource(sourceId: number): Promise<void> {
         if (!matched) {
           // Still save the post but don't notify
           db.run(
-            "INSERT OR IGNORE INTO posts (source_id, title, url, author) VALUES (?, ?, ?, ?)",
-            [id, post.title, post.url, post.author || null]
+            "INSERT OR IGNORE INTO posts (source_id, external_id, title, url, author) VALUES (?, ?, ?, ?, ?)",
+            [id, post.externalId || null, post.title, post.url, post.author || null]
           );
           continue;
         }
       }
 
+      matchedCount++;
+
       // Insert new post
       db.run(
-        "INSERT OR IGNORE INTO posts (source_id, title, url, author) VALUES (?, ?, ?, ?)",
-        [id, post.title, post.url, post.author || null]
+        "INSERT OR IGNORE INTO posts (source_id, external_id, title, url, author) VALUES (?, ?, ?, ?, ?)",
+        [id, post.externalId || null, post.title, post.url, post.author || null]
       );
 
       // Get the inserted post ID
-      const inserted = db.exec(
-        "SELECT id FROM posts WHERE source_id = ? AND url = ?",
-        [id, post.url]
-      );
+      const inserted = post.externalId
+        ? db.exec("SELECT id FROM posts WHERE source_id = ? AND external_id = ?", [id, post.externalId])
+        : db.exec("SELECT id FROM posts WHERE source_id = ? AND url = ?", [id, post.url]);
       const postId = inserted[0]?.values[0]?.[0] as number;
 
       // Summarize content
@@ -140,17 +164,29 @@ async function crawlSource(sourceId: number): Promise<void> {
         summary,
         sourceName: name,
       });
-
-      newCount++;
     }
+
+    // Log crawl result
+    db.run(
+      "INSERT INTO crawl_logs (source_id, status, total_found, new_posts, matched_posts) VALUES (?, 'success', ?, ?, ?)",
+      [id, posts.length, newCount, matchedCount]
+    );
 
     saveDb();
 
-    if (newCount > 0) {
-      console.log(`[Crawler] ${name}: ${newCount} new matching post(s) found`);
-    }
+    console.log(
+      `[Crawler] ${name}: found ${posts.length}, new ${newCount}, matched ${matchedCount}`
+    );
   } catch (err) {
-    console.error(`[Crawler] Failed to crawl ${name}:`, (err as Error).message);
+    const errMsg = (err as Error).message;
+    console.error(`[Crawler] Failed to crawl ${name}:`, errMsg);
+
+    // Log error
+    db.run(
+      "INSERT INTO crawl_logs (source_id, status, error_message) VALUES (?, 'error', ?)",
+      [id, errMsg]
+    );
+    saveDb();
   }
 }
 
