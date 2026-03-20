@@ -1,0 +1,32 @@
+{
+  "name": "web-monitor",
+  "version": "1.0.0",
+  "description": "Web monitoring service with keyword alerts and notifications",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "db:migrate": "tsx src/db/migrate.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "axios": "^1.7.0",
+    "sql.js": "^1.11.0",
+    "cheerio": "^1.0.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.0",
+    "rss-parser": "^3.13.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.0",
+    "@types/express": "^4.17.0",
+    "@types/node": "^22.0.0",
+    "@types/node-cron": "^3.0.0",
+    "@types/nodemailer": "^6.4.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
