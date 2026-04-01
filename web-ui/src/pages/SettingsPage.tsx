@@ -120,25 +120,19 @@ export default function SettingsPage() {
                       {meta.description}
                     </div>
                   </div>
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      cursor: "pointer",
-                      userSelect: "none",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={s.enabled}
-                      onChange={() => toggleEnabled(s.channel)}
-                      style={{ width: 18, height: 18 }}
-                    />
-                    <span style={{ fontSize: 14, fontWeight: 500 }}>
-                      {s.enabled ? "활성" : "비활성"}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: s.enabled ? "var(--success)" : "var(--text-secondary)" }}>
+                      {s.enabled ? "ON" : "OFF"}
                     </span>
-                  </label>
+                    <label className="toggle">
+                      <input
+                        type="checkbox"
+                        checked={s.enabled}
+                        onChange={() => toggleEnabled(s.channel)}
+                      />
+                      <span className="toggle-track" />
+                    </label>
+                  </div>
                 </div>
 
                 {meta.fields.map((field) => (

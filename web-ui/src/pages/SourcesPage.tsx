@@ -16,6 +16,7 @@ interface SourceForm {
     author: string;
     postId: string;
     postIdAttr: string;
+    useBrowser: boolean;
   };
 }
 
@@ -25,7 +26,7 @@ const emptyForm: SourceForm = {
   type: "html",
   interval_minutes: 5,
   keywords: "",
-  selectors: { row: "", title: "", link: "", linkAttr: "href", author: "", postId: "", postIdAttr: "" },
+  selectors: { row: "", title: "", link: "", linkAttr: "href", author: "", postId: "", postIdAttr: "", useBrowser: false },
 };
 
 export default function SourcesPage() {
@@ -77,6 +78,7 @@ export default function SourcesPage() {
         author: s.selectors.author || "",
         postId: s.selectors.postId || "",
         postIdAttr: s.selectors.postIdAttr || "",
+        useBrowser: !!s.selectors.useBrowser,
       },
     });
     setPreview(null);
@@ -88,15 +90,18 @@ export default function SourcesPage() {
       toast.error("URL을 먼저 입력해주세요.");
       return;
     }
+    if (!form.selectors.row) {
+      toast.error("게시물 행(row) 셀렉터를 먼저 입력해주세요.");
+      return;
+    }
     setAnalyzing(true);
     setPreview(null);
     try {
-      const result = await api.analyzeUrl(form.url);
+      const result = await api.analyzeSelectors(form.url, form.selectors.row, form.selectors.useBrowser);
       setForm((f) => ({
         ...f,
-        type: "html",
         selectors: {
-          row: result.row,
+          ...f.selectors,
           title: result.title,
           link: result.link,
           linkAttr: result.linkAttr || "href",
@@ -109,10 +114,15 @@ export default function SourcesPage() {
       if (result.preview.length > 0) {
         toast.success(`${result.preview.length}개 게시물이 감지되었습니다.`);
       } else {
-        toast.error("게시물을 감지하지 못했습니다. 셀렉터를 수동으로 입력해주세요.");
+        toast.error("게시물을 감지하지 못했습니다. row 셀렉터를 다시 확인해주세요.");
       }
     } catch (err) {
-      toast.error("URL 분석에 실패했습니다: " + (err as Error).message);
+      const msg = (err as Error).message;
+      if (msg.startsWith("BLOCKED:")) {
+        toast.error(msg.replace("BLOCKED: ", ""), 8000);
+      } else {
+        toast.error("분석 실패: " + msg);
+      }
     } finally {
       setAnalyzing(false);
     }
@@ -182,6 +192,19 @@ export default function SourcesPage() {
       toast.success("크롤링이 실행되었습니다.");
     } catch (err) {
       toast.error("크롤링 실패: " + (err as Error).message);
+    }
+  };
+
+  const handleLoginBrowser = async () => {
+    if (!form.url) {
+      toast.error("URL을 먼저 입력해주세요.");
+      return;
+    }
+    try {
+      const result = await api.openLoginBrowser(form.url);
+      toast.success(result.message, 6000);
+    } catch (err) {
+      toast.error("브라우저 열기 실패: " + (err as Error).message);
     }
   };
 
@@ -327,35 +350,11 @@ export default function SourcesPage() {
 
               <div className="form-group">
                 <label>URL</label>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <input
-                    value={form.url}
-                    onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
-                    placeholder="https://example.com/board"
-                    style={{ flex: 1 }}
-                  />
-                  {form.type === "html" && (
-                    <button
-                      className="btn btn-primary"
-                      onClick={handleAnalyze}
-                      disabled={analyzing}
-                      style={{ whiteSpace: "nowrap" }}
-                    >
-                      {analyzing ? (
-                        <>
-                          <span className="spinner" /> 분석중...
-                        </>
-                      ) : (
-                        "자동 분석"
-                      )}
-                    </button>
-                  )}
-                </div>
-                {form.type === "html" && (
-                  <div className="form-hint">
-                    URL을 입력하고 "자동 분석"을 누르면 AI가 CSS 셀렉터를 자동으로 감지합니다.
-                  </div>
-                )}
+                <input
+                  value={form.url}
+                  onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
+                  placeholder="https://example.com/board"
+                />
               </div>
 
               <div className="form-row">
@@ -388,12 +387,42 @@ export default function SourcesPage() {
 
               {form.type === "html" && (
                 <>
-                  <div style={{ marginBottom: 8, marginTop: 8, fontWeight: 600, fontSize: 14 }}>
-                    CSS 셀렉터
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, marginTop: 8 }}>
+                    <span style={{ fontWeight: 600, fontSize: 14 }}>CSS 셀렉터</span>
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer", userSelect: "none" }}>
+                      <input
+                        type="checkbox"
+                        checked={form.selectors.useBrowser}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            selectors: { ...f.selectors, useBrowser: e.target.checked },
+                          }))
+                        }
+                      />
+                      브라우저 렌더링 사용
+                      {form.selectors.useBrowser && (
+                        <button
+                          type="button"
+                          className="btn btn-sm"
+                          onClick={handleLoginBrowser}
+                          style={{ marginLeft: 4 }}
+                          title="네이버 등 로그인이 필요한 사이트에서 브라우저를 열어 직접 로그인합니다"
+                        >
+                          로그인
+                        </button>
+                      )}
+                    </label>
                   </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>게시물 행 (row)</label>
+                  {form.selectors.useBrowser && (
+                    <div className="form-hint" style={{ marginBottom: 10 }}>
+                      JS 렌더링이 필요하거나 로그인이 필요한 사이트에 사용합니다.
+                      로그인이 필요한 경우 "로그인" 버튼으로 브라우저 창을 열어 직접 로그인하세요.
+                    </div>
+                  )}
+                  <div className="form-group">
+                    <label>게시물 행 (row)</label>
+                    <div style={{ display: "flex", gap: 8 }}>
                       <input
                         value={form.selectors.row}
                         onChange={(e) =>
@@ -403,79 +432,93 @@ export default function SourcesPage() {
                           }))
                         }
                         placeholder="예: table.board-list tbody tr"
+                        style={{ flex: 1 }}
                       />
+                      <button
+                        className="btn btn-primary"
+                        onClick={handleAnalyze}
+                        disabled={analyzing}
+                        style={{ whiteSpace: "nowrap" }}
+                      >
+                        {analyzing ? (
+                          <>
+                            <span className="spinner" /> 분석중...
+                          </>
+                        ) : (
+                          "AI 분석"
+                        )}
+                      </button>
                     </div>
-                    <div className="form-group">
-                      <label>제목 (title)</label>
-                      <input
-                        value={form.selectors.title}
-                        onChange={(e) =>
-                          setForm((f) => ({
-                            ...f,
-                            selectors: { ...f.selectors, title: e.target.value },
-                          }))
-                        }
-                        placeholder="예: td.title a"
-                      />
-                    </div>
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>링크 (link)</label>
-                      <input
-                        value={form.selectors.link}
-                        onChange={(e) =>
-                          setForm((f) => ({
-                            ...f,
-                            selectors: { ...f.selectors, link: e.target.value },
-                          }))
-                        }
-                        placeholder="예: td.title a"
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>작성자 (author)</label>
-                      <input
-                        value={form.selectors.author}
-                        onChange={(e) =>
-                          setForm((f) => ({
-                            ...f,
-                            selectors: { ...f.selectors, author: e.target.value },
-                          }))
-                        }
-                        placeholder="예: td.author (선택사항)"
-                      />
+                    <div className="form-hint">
+                      row 셀렉터 입력 후 "AI 분석"을 누르면 나머지 셀렉터를 자동으로 채웁니다.
                     </div>
                   </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>게시글 ID (postId)</label>
-                      <input
-                        value={form.selectors.postId}
-                        onChange={(e) =>
-                          setForm((f) => ({
-                            ...f,
-                            selectors: { ...f.selectors, postId: e.target.value },
-                          }))
-                        }
-                        placeholder="예: td.no (선택사항)"
-                      />
-                      <div className="form-hint">게시글 고유번호 셀렉터. 중복 알림 방지에 사용됩니다.</div>
-                    </div>
-                    <div className="form-group">
-                      <label>게시글 ID 속성 (postIdAttr)</label>
-                      <input
-                        value={form.selectors.postIdAttr}
-                        onChange={(e) =>
-                          setForm((f) => ({
-                            ...f,
-                            selectors: { ...f.selectors, postIdAttr: e.target.value },
-                          }))
-                        }
-                        placeholder="예: data-id (비워두면 텍스트 사용)"
-                      />
-                      <div className="form-hint">속성에서 ID를 가져올 경우 지정. 보통 비워둡니다.</div>
-                    </div>
+                  <div className="form-group">
+                    <label>제목 (title)</label>
+                    <input
+                      value={form.selectors.title}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          selectors: { ...f.selectors, title: e.target.value },
+                        }))
+                      }
+                      placeholder="예: td.title a"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>링크 (link)</label>
+                    <input
+                      value={form.selectors.link}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          selectors: { ...f.selectors, link: e.target.value },
+                        }))
+                      }
+                      placeholder="예: td.title a"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>작성자 (author)</label>
+                    <input
+                      value={form.selectors.author}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          selectors: { ...f.selectors, author: e.target.value },
+                        }))
+                      }
+                      placeholder="예: td.author (선택사항)"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>게시글 ID (postId)</label>
+                    <input
+                      value={form.selectors.postId}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          selectors: { ...f.selectors, postId: e.target.value },
+                        }))
+                      }
+                      placeholder="예: td.no (선택사항)"
+                    />
+                    <div className="form-hint">게시글 고유번호 셀렉터. 중복 알림 방지에 사용됩니다.</div>
+                  </div>
+                  <div className="form-group">
+                    <label>게시글 ID 속성 (postIdAttr)</label>
+                    <input
+                      value={form.selectors.postIdAttr}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          selectors: { ...f.selectors, postIdAttr: e.target.value },
+                        }))
+                      }
+                      placeholder="예: data-id (비워두면 텍스트 사용)"
+                    />
+                    <div className="form-hint">속성에서 ID를 가져올 경우 지정. 보통 비워둡니다.</div>
                   </div>
                 </>
               )}

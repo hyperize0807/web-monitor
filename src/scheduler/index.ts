@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import { getDb, saveDb } from "../db/index.js";
 import { crawlHtml, type Selectors } from "../crawler/html-crawler.js";
+import { crawlWithBrowser } from "../crawler/browser-crawler.js";
 import { crawlRss } from "../crawler/rss-crawler.js";
 import { summarizePost } from "../crawler/content-summarizer.js";
 import { notifyNewPost } from "../notifier/index.js";
@@ -78,7 +79,7 @@ async function crawlSource(sourceId: number): Promise<void> {
     if (type === "rss") {
       posts = await crawlRss(url);
     } else {
-      const selectors: Selectors = JSON.parse(selectorsJson || "{}");
+      const selectors: Selectors & { useBrowser?: boolean } = JSON.parse(selectorsJson || "{}");
       if (!selectors.row || !selectors.title || !selectors.link) {
         const errMsg = "Incomplete selectors, skipping";
         console.warn(`[Crawler] Source ${name}: ${errMsg}`);
@@ -89,7 +90,12 @@ async function crawlSource(sourceId: number): Promise<void> {
         saveDb();
         return;
       }
-      posts = await crawlHtml(url, selectors);
+      if (selectors.useBrowser) {
+        console.log(`[Crawler] Using browser renderer for: ${name}`);
+        posts = await crawlWithBrowser(url, selectors);
+      } else {
+        posts = await crawlHtml(url, selectors);
+      }
     }
 
     let newCount = 0;

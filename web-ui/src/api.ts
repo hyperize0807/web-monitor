@@ -96,8 +96,14 @@ export const api = {
   deleteSource: (id: number) =>
     request<void>(`/sources/${id}`, { method: "DELETE" }),
 
-  analyzeUrl: (url: string) =>
+  analyzeSelectors: (url: string, rowSelector: string, useBrowser = false) =>
     request<AnalyzeResult>("/sources/analyze", {
+      method: "POST",
+      body: JSON.stringify({ url, rowSelector, useBrowser }),
+    }),
+
+  openLoginBrowser: (url: string) =>
+    request<{ message: string }>("/browser/login", {
       method: "POST",
       body: JSON.stringify({ url }),
     }),

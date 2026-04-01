@@ -27,6 +27,8 @@ export async function crawlHtml(
       "User-Agent":
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
       "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8",
+      "Cache-Control": "no-cache",
+      "Pragma": "no-cache",
     },
     timeout: 15000,
   });
@@ -71,6 +73,8 @@ export async function fetchPageContent(url: string): Promise<string> {
     headers: {
       "User-Agent":
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      "Cache-Control": "no-cache",
+      "Pragma": "no-cache",
     },
     timeout: 15000,
   });
@@ -108,6 +112,8 @@ export async function fetchRawHtml(url: string): Promise<string> {
     headers: {
       "User-Agent":
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      "Cache-Control": "no-cache",
+      "Pragma": "no-cache",
     },
     timeout: 15000,
   });

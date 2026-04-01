@@ -126,13 +126,13 @@ router.delete("/:id", async (req, res) => {
 // POST /api/sources/analyze - Auto-detect CSS selectors
 router.post("/analyze", async (req, res) => {
   try {
-    const { url } = req.body;
-    if (!url) {
-      res.status(400).json({ error: "URL is required" });
+    const { url, rowSelector, useBrowser } = req.body;
+    if (!url || !rowSelector) {
+      res.status(400).json({ error: "url과 rowSelector가 필요합니다." });
       return;
     }
 
-    const result = await analyzeSelectors(url);
+    const result = await analyzeSelectors(url, rowSelector, !!useBrowser);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });

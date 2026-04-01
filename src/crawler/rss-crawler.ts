@@ -5,6 +5,8 @@ const parser = new RssParser({
   timeout: 15000,
   headers: {
     "User-Agent": "WebMonitor/1.0",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
   },
 });
 
